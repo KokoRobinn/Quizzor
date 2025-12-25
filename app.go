@@ -62,15 +62,16 @@ func main() {
 			return
 		}
 
+		fmt.Fprint(os.Stdout, "bah")
 		input := r.FormValue("input")
 
-		fmt.Fprint(w, input)
-		//tmpl.Execute(w, struct{ Success bool; File string }{ true, CODES_DIR + file })
+		fmt.Fprint(os.Stdout, "queried quiz: ", input, "\n")
+		quiz_tmpl.Execute(w, struct{ Quiz string }{input})
 	})
 
 	http.HandleFunc("/quiz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			quiz_tmpl.Execute(w, nil)
+			quiz_tmpl.Execute(w, struct{ Quiz string }{"Bah"})
 		}
 	})
 
