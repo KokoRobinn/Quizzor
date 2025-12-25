@@ -1,0 +1,15 @@
+{
+    "name": "Test",
+    "questions": [
+	{
+	    "question": "What is the capital of Madagascar?",
+	    "timer_s": 30,
+	    "options": [
+		"Antananarivo",
+		"Toamasina",
+		"Arboreo",
+		"Tarmarika"
+	    ]
+	}
+    ]
+}
