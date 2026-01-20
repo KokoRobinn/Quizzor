@@ -62,7 +62,6 @@ func main() {
 			return
 		}
 
-		fmt.Fprint(os.Stdout, "bah")
 		input := r.FormValue("input")
 
 		fmt.Fprint(os.Stdout, "queried quiz: ", input, "\n")
