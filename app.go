@@ -12,9 +12,9 @@ import (
 type Code string
 
 type Question struct {
-	Question string
-	Timer_s  int //time in seconds
-	Options  []string
+	Text    string
+	Timer_s int //time in seconds
+	Options []string
 }
 
 type Player struct {
@@ -23,14 +23,15 @@ type Player struct {
 }
 
 type Quiz struct {
-	Name            string
-	Code            Code
-	Global_timer_s  int //override question timer
-	Active_question int
-	Questions       []Question
-	Players         []Player
+	Name           string
+	Code           Code
+	Global_timer_s int //override question timer
+	Question_index int
+	Questions      []Question
+	Players        []Player
 }
 
+var available_quizzes map[string]Quiz
 var active_quizzes map[Code]Quiz = make(map[Code]Quiz)
 
 const QUIZZES_DIR string = "./quizzes"
@@ -98,7 +99,7 @@ func main() {
 				make_code(),
 				-1,
 				0,
-				make([]Question, 0),
+				[]Question{{"What is the capital of Madagascar?", -1, []string{"antananarivo", "bamse", "nepal", "mjau"}}},
 				make([]Player, 0),
 			}
 		}

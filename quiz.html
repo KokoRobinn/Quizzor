@@ -1,15 +1,34 @@
 <!DOCTYPE html>
 <head>
     {{$quiz := .Quiz}}
-    {{$players := $quiz.Players}}
 </head>
 <body>
+    {{if lt $quiz.Question_index 0}}
+    <!--Welcome screen-->
     <h1>Welcome to quiz {{$quiz.Name}}</h1> 
     <div>
         code: {{$quiz.Code}} <br>
         players: <br>
-        {{range $p := $players}}
+        {{range $p := $quiz.Players}}
             <div> &ensp;&ensp;&ensp;&ensp; {{$p.Name}} </div>
         {{end}}
     </div>
+    {{else}}
+    <!--Question screen-->
+    {{$question := index $quiz.Questions $quiz.Question_index}}
+    <h1>Question {{$quiz.Question_index}}</h1>
+    <form method="POST">
+    <p>{{$question.Text}}</p>
+    {{if $question.Options}}
+    <!--Radio button select-->
+    {{range $o := $question.Options}}
+    <input type="radio" id="{{$o}}" name="answer" value="{{$o}}">
+    <label for="{{$o}}">{{$o}}</label><br>
+    {{end}}
+    {{else}}
+    <!--Free text (WIP)-->
+    {{end}}
+    <input type="submit" value="Submit">
+    </form>
+    {{end}}
 </body>
