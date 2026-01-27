@@ -25,7 +25,9 @@
 	    {{range $quiz := .Quizzes}}
 	    	<option value="{{$quiz}}">{{$quiz}}</option>	
 	    {{end}}
-	    </datalist>	
+	    </datalist>
+
+		<input type="text" name="name">
 
 	    <button type="submit">Start</button>
 	</form>

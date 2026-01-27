@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <head>
+    {{$quiz := .Quiz}}
 </head>
 <body>
-    <h1> Welcome to quiz {{.Quiz}}</h1> 
+    <h1> Welcome to quiz {{$quiz.Name}}</h1> 
+    <div>
+        code: {{$quiz.Code}} <br>
+        players: {{$quiz.Players}}
+    </div>
 </body>

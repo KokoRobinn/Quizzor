@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 type Code string
@@ -22,16 +23,36 @@ type Player struct {
 }
 
 type Quiz struct {
-	name            string
-	global_timer_s  int //override question timer
-	active_question int
-	questions       []Question
-	players         []Player
+	Name            string
+	Code            Code
+	Global_timer_s  int //override question timer
+	Active_question int
+	Questions       []Question
+	Players         []Player
 }
 
-var active_quizzes map[Code]Quiz
+var active_quizzes map[Code]Quiz = make(map[Code]Quiz)
 
 const QUIZZES_DIR string = "./quizzes"
+const CODE_LEN = 6
+const CODE_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func (q Quiz) add_player(p Player) {
+	q.Players = append(q.Players[:], p)
+}
+
+func make_code() Code {
+	seed := time.Now().Local().UnixMicro()
+	code_arr := make([]byte, CODE_LEN)
+	code_arr[0] = CODE_CHARS[seed%int64(len(CODE_CHARS))]
+	for i := int64(1); i < CODE_LEN; i++ {
+		code_arr[i] = CODE_CHARS[(int64(code_arr[i-1])*seed^seed>>i)%int64(len(CODE_CHARS))]
+	}
+	for _, exists := active_quizzes[Code(string(code_arr))]; exists; {
+		code_arr[0] = CODE_CHARS[(int64(code_arr[0])^seed)%int64(len(CODE_CHARS))]
+	}
+	return Code(string(code_arr))
+}
 
 func read_quizzes() []string {
 	quizzes_dir, err := os.ReadDir(QUIZZES_DIR)
@@ -63,14 +84,30 @@ func main() {
 		}
 
 		input := r.FormValue("input")
+		name := r.FormValue("name")
+		new_quiz, exists := active_quizzes[Code(input)]
+
+		if !exists {
+			new_quiz = Quiz{
+				input,
+				make_code(),
+				-1,
+				0,
+				make([]Question, 0),
+				make([]Player, 0),
+			}
+		}
+
+		new_quiz.add_player(Player{name, make([]bool, 0)})
+		active_quizzes[new_quiz.Code] = new_quiz
 
 		fmt.Fprint(os.Stdout, "queried quiz: ", input, "\n")
-		quiz_tmpl.Execute(w, struct{ Quiz string }{input})
+		quiz_tmpl.Execute(w, struct{ Quiz Quiz }{new_quiz})
 	})
 
 	http.HandleFunc("/quiz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			quiz_tmpl.Execute(w, struct{ Quiz string }{"Bah"})
+			quiz_tmpl.Execute(w, struct{ Quiz string }{r.URL.Path})
 		}
 	})
 
