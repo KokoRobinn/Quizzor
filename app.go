@@ -12,14 +12,14 @@ import (
 type Code string
 
 type Question struct {
-	question string
-	timer_s  int //time in seconds
-	options  []string
+	Question string
+	Timer_s  int //time in seconds
+	Options  []string
 }
 
 type Player struct {
-	name            string
-	correct_answers []bool
+	Name            string
+	Correct_answers []bool
 }
 
 type Quiz struct {
@@ -37,8 +37,12 @@ const QUIZZES_DIR string = "./quizzes"
 const CODE_LEN = 6
 const CODE_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func (q Quiz) add_player(p Player) {
-	q.Players = append(q.Players[:], p)
+func (q *Quiz) add_player(p Player) {
+	q.Players = append(q.Players, p)
+	fmt.Fprint(os.Stdout, "added player: ", p.Name, "\n", "total players for ", q.Code, ":\n")
+	for _, plyr := range q.Players {
+		fmt.Fprint(os.Stdout, "\t", plyr.Name, "\n")
+	}
 }
 
 func make_code() Code {
@@ -48,6 +52,7 @@ func make_code() Code {
 	for i := int64(1); i < CODE_LEN; i++ {
 		code_arr[i] = CODE_CHARS[(int64(code_arr[i-1])*seed^seed>>i)%int64(len(CODE_CHARS))]
 	}
+	//TODO: make this more robust
 	for _, exists := active_quizzes[Code(string(code_arr))]; exists; {
 		code_arr[0] = CODE_CHARS[(int64(code_arr[0])^seed)%int64(len(CODE_CHARS))]
 	}
@@ -84,7 +89,7 @@ func main() {
 		}
 
 		input := r.FormValue("input")
-		name := r.FormValue("name")
+		player_name := r.FormValue("name")
 		new_quiz, exists := active_quizzes[Code(input)]
 
 		if !exists {
@@ -98,10 +103,10 @@ func main() {
 			}
 		}
 
-		new_quiz.add_player(Player{name, make([]bool, 0)})
+		new_quiz.add_player(Player{player_name, make([]bool, 0)})
 		active_quizzes[new_quiz.Code] = new_quiz
 
-		fmt.Fprint(os.Stdout, "queried quiz: ", input, "\n")
+		fmt.Fprint(os.Stdout, "queried quiz: ", input, "\nwith players: ", new_quiz.Players, "\n")
 		quiz_tmpl.Execute(w, struct{ Quiz Quiz }{new_quiz})
 	})
 
