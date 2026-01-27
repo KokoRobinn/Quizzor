@@ -26,7 +26,7 @@
 	<h1 style="text-align: center;">Welcome to quizzes!</h1>
 	<p>Choose a quiz to start a game or enter a code to join one</p><br>
 	<form method="POST">
-	    <input type="text" list="quizlist" name="input">
+	    <input type="text" list="quizlist" name="input" autocomplete="off">
 
 	    <datalist id="quizlist">
 	    {{range $quiz := .Quizzes}}

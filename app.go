@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"maps"
 	"net/http"
 	"os"
+	"path"
+	"slices"
 	"strings"
 	"time"
 )
@@ -12,9 +16,9 @@ import (
 type Code string
 
 type Question struct {
-	Text    string
-	Timer_s int //time in seconds
-	Options []string
+	Text    string   `json:"text"`
+	Timer_s int      `json:"timer_s"` //time in seconds
+	Options []string `json:"options"`
 }
 
 type Player struct {
@@ -23,11 +27,11 @@ type Player struct {
 }
 
 type Quiz struct {
-	Name           string
+	Name           string `json:"name"`
 	Code           Code
-	Global_timer_s int //override question timer
+	Global_timer_s int `json:"global_timer_s"` //overriden by question timer
 	Question_index int
-	Questions      []Question
+	Questions      []Question `json:"questions"`
 	Players        []Player
 }
 
@@ -60,24 +64,36 @@ func make_code() Code {
 	return Code(string(code_arr))
 }
 
-func read_quizzes() []string {
+func parse_quizzes() map[string]Quiz {
 	quizzes_dir, err := os.ReadDir(QUIZZES_DIR)
 	if err != nil {
-		panic("Panic! Could not read quiz directory")
+		fmt.Println(err.Error())
 	}
-	var quiz_names []string
+	var quizzes map[string]Quiz = make(map[string]Quiz)
 	for _, q := range quizzes_dir {
 		var s string = q.Name()
 		s = strings.ReplaceAll(s, ".json", "")
-		quiz_names = append(quiz_names, s)
+
+		quiz_json_file, err := os.Open(path.Join(QUIZZES_DIR, q.Name()))
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		quiz := Quiz{}
+		jsonParser := json.NewDecoder(quiz_json_file)
+		if err = jsonParser.Decode(&quiz); err != nil {
+			fmt.Println(err.Error())
+		}
+		fmt.Println(quiz)
+		quizzes[s] = quiz
 		print("appended quiz: ", s, "\n")
+		quiz_json_file.Close()
 	}
 
-	return quiz_names
+	return quizzes
 }
 
 func main() {
-	quiz_names := read_quizzes()
+	available_quizzes = parse_quizzes()
 	start_tmpl := template.Must(template.ParseFiles("main.html"))
 	quiz_tmpl := template.Must(template.ParseFiles("quiz.html"))
 
@@ -85,29 +101,31 @@ func main() {
 		// Show start page
 		if r.Method != http.MethodPost {
 			//fmt.Fprint(w, r.Host)
-			start_tmpl.Execute(w, struct{ Quizzes []string }{quiz_names[:]})
+			start_tmpl.Execute(w, struct{ Quizzes []string }{slices.Collect(maps.Keys(available_quizzes))})
 			return
 		}
 
 		input := r.FormValue("input")
 		player_name := r.FormValue("name")
-		new_quiz, exists := active_quizzes[Code(input)]
-
-		if !exists {
-			new_quiz = Quiz{
-				input,
-				make_code(),
-				-1,
-				0,
-				[]Question{{"What is the capital of Madagascar?", -1, []string{"antananarivo", "bamse", "nepal", "mjau"}}},
-				make([]Player, 0),
+		new_quiz, active := active_quizzes[Code(input)]
+		if !active {
+			available := true
+			new_quiz, available = available_quizzes[input]
+			fmt.Println(new_quiz)
+			if !available {
+				//Go home
+				start_tmpl.Execute(w, struct{ Quizzes []string }{slices.Collect(maps.Keys(available_quizzes))})
+				return
 			}
+			new_quiz.Code = make_code()
+			new_quiz.Question_index = 0
+			new_quiz.Players = make([]Player, 0)
 		}
 
 		new_quiz.add_player(Player{player_name, make([]bool, 0)})
 		active_quizzes[new_quiz.Code] = new_quiz
 
-		fmt.Fprint(os.Stdout, "queried quiz: ", input, "\nwith players: ", new_quiz.Players, "\n")
+		fmt.Fprint(os.Stdout, "queried quiz: ", input, "\n", new_quiz, "\n")
 		quiz_tmpl.Execute(w, struct{ Quiz Quiz }{new_quiz})
 	})
 

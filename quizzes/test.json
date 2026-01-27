@@ -1,15 +1,16 @@
 {
-    "name": "Test",
-    "questions": [
-	{
-	    "question": "What is the capital of Madagascar?",
-	    "timer_s": 30,
-	    "options": [
-		"Antananarivo",
-		"Toamasina",
-		"Arboreo",
-		"Tarmarika"
-	    ]
-	}
-    ]
+	"name": "Test",
+	"global_timer_s": -1,
+	"questions": [
+		{
+    		"text": "What is the capital of Madagascar?",
+    		"timer_s": 30,
+    		"options": [
+				"Antananarivo",
+				"Toamasina",
+				"Arboreo",
+				"Tarmarika"
+    		]
+		}
+	]
 }
