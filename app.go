@@ -10,6 +10,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -29,6 +30,7 @@ type Player struct {
 type Quiz struct {
 	Name           string `json:"name"`
 	Code           Code
+	Broker         *Broker
 	Global_timer_s int `json:"global_timer_s"` //overriden by question timer
 	Question_index int
 	Questions      []Question `json:"questions"`
@@ -42,7 +44,50 @@ const QUIZZES_DIR string = "./quizzes"
 const CODE_LEN = 6
 const CODE_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func (q *Quiz) add_player(p Player) {
+type Broker struct {
+	clients map[chan string]bool
+	lock    sync.Mutex
+}
+
+func newBroker() *Broker {
+	return &Broker{clients: make(map[chan string]bool)}
+}
+
+func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	msgChan := make(chan string)
+	b.lock.Lock()
+	b.clients[msgChan] = true
+	b.lock.Unlock()
+
+	defer func() {
+		b.lock.Lock()
+		delete(b.clients, msgChan)
+		b.lock.Unlock()
+		close(msgChan)
+	}()
+
+	for msg := range msgChan {
+		fmt.Fprintf(w, "data: %s\n\n", msg)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+	}
+}
+
+func (b *Broker) Broadcast(msg string) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	for client := range b.clients {
+		client <- msg
+	}
+}
+
+func (q *Quiz) Add_player(p Player) {
 	q.Players = append(q.Players, p)
 	fmt.Fprint(os.Stdout, "added player: ", p.Name, "\n", "total players for ", q.Code, ":\n")
 	for _, plyr := range q.Players {
@@ -118,11 +163,12 @@ func main() {
 				return
 			}
 			new_quiz.Code = make_code()
+			new_quiz.Broker = newBroker()
 			new_quiz.Question_index = 0
 			new_quiz.Players = make([]Player, 0)
 		}
 
-		new_quiz.add_player(Player{player_name, make([]bool, 0)})
+		new_quiz.Add_player(Player{player_name, make([]bool, 0)})
 		active_quizzes[new_quiz.Code] = new_quiz
 
 		fmt.Fprint(os.Stdout, "queried quiz: ", input, "\n", new_quiz, "\n")
