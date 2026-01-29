@@ -24,6 +24,7 @@ type Question struct {
 
 type Player struct {
 	Name            string
+	Current_answer  string
 	Correct_answers []bool
 }
 
@@ -166,9 +167,10 @@ func main() {
 			new_quiz.Broker = newBroker()
 			new_quiz.Question_index = 0
 			new_quiz.Players = make([]Player, 0)
+			http.HandleFunc("/events/"+string(new_quiz.Code), new_quiz.Broker.ServeHTTP)
 		}
 
-		new_quiz.Add_player(Player{player_name, make([]bool, 0)})
+		new_quiz.Add_player(Player{player_name, "", make([]bool, 0)})
 		active_quizzes[new_quiz.Code] = new_quiz
 
 		fmt.Fprint(os.Stdout, "queried quiz: ", input, "\n", new_quiz, "\n")
