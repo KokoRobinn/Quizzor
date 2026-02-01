@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -39,7 +40,7 @@ type Quiz struct {
 }
 
 var available_quizzes map[string]Quiz
-var active_quizzes map[Code]Quiz = make(map[Code]Quiz)
+var active_quizzes map[Code]*Quiz = make(map[Code]*Quiz)
 
 const QUIZZES_DIR string = "./quizzes"
 const CODE_LEN = 6
@@ -90,10 +91,28 @@ func (b *Broker) Broadcast(msg string) {
 
 func (q *Quiz) Add_player(p Player) {
 	q.Players = append(q.Players, p)
-	fmt.Fprint(os.Stdout, "added player: ", p.Name, "\n", "total players for ", q.Code, ":\n")
+	fmt.Fprintln(os.Stdout, "Added player", p.Name, "to", q.Code, "\n\ttotal players:")
 	for _, plyr := range q.Players {
-		fmt.Fprint(os.Stdout, "\t", plyr.Name, "\n")
+		fmt.Fprint(os.Stdout, "\t\t", plyr.Name, "\n")
 	}
+	q.Broker.Broadcast("update")
+}
+
+func (q *Quiz) Next_question() {
+	q.Question_index += 1
+	q.Broker.Broadcast("update")
+	fmt.Fprintln(os.Stdout, "Incremented question index!\n\t", q)
+}
+
+func (q Quiz) Instantiate() *Quiz {
+	val := reflect.ValueOf(q)
+
+	// Create a new pointer to the struct type
+	ptr := reflect.New(val.Type())
+
+	// Set the value of the pointer to the original struct's value
+	ptr.Elem().Set(val)
+	return ptr.Interface().(*Quiz)
 }
 
 func make_code() Code {
@@ -129,9 +148,8 @@ func parse_quizzes() map[string]Quiz {
 		if err = jsonParser.Decode(&quiz); err != nil {
 			fmt.Println(err.Error())
 		}
-		fmt.Println(quiz)
 		quizzes[s] = quiz
-		print("appended quiz: ", s, "\n")
+		fmt.Fprintln(os.Stdout, "Appended quiz:", s)
 		quiz_json_file.Close()
 	}
 
@@ -146,18 +164,18 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// Show start page
 		if r.Method != http.MethodPost {
-			//fmt.Fprint(w, r.Host)
 			start_tmpl.Execute(w, struct{ Quizzes []string }{slices.Collect(maps.Keys(available_quizzes))})
 			return
 		}
 
-		input := r.FormValue("input")
+		quiz_name := r.FormValue("quiz_name")
 		player_name := r.FormValue("name")
-		new_quiz, active := active_quizzes[Code(input)]
+		new_quiz, active := active_quizzes[Code(quiz_name)]
+		fmt.Fprintln(os.Stdout, "Queried quiz:", quiz_name)
 		if !active {
 			available := true
-			new_quiz, available = available_quizzes[input]
-			fmt.Println(new_quiz)
+			src_quiz, available := available_quizzes[quiz_name]
+			new_quiz = src_quiz.Instantiate()
 			if !available {
 				//Go home
 				start_tmpl.Execute(w, struct{ Quizzes []string }{slices.Collect(maps.Keys(available_quizzes))})
@@ -165,21 +183,29 @@ func main() {
 			}
 			new_quiz.Code = make_code()
 			new_quiz.Broker = newBroker()
-			new_quiz.Question_index = 0
+			new_quiz.Question_index = -1
 			new_quiz.Players = make([]Player, 0)
 			http.HandleFunc("/events/"+string(new_quiz.Code), new_quiz.Broker.ServeHTTP)
+			fmt.Fprintln(os.Stdout, "Quiz", quiz_name, "not active! Instantiating new quiz with code:", new_quiz.Code)
 		}
 
 		new_quiz.Add_player(Player{player_name, "", make([]bool, 0)})
 		active_quizzes[new_quiz.Code] = new_quiz
 
-		fmt.Fprint(os.Stdout, "queried quiz: ", input, "\n", new_quiz, "\n")
-		quiz_tmpl.Execute(w, struct{ Quiz Quiz }{new_quiz})
+		http.Redirect(w, r, "/quiz/"+string(new_quiz.Code), http.StatusSeeOther)
 	})
 
-	http.HandleFunc("/quiz", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/quiz/", func(w http.ResponseWriter, r *http.Request) {
+		quiz_code := Code(strings.ReplaceAll(r.URL.Path, "/quiz/", ""))
 		if r.Method != http.MethodPost {
-			quiz_tmpl.Execute(w, struct{ Quiz string }{r.URL.Path})
+			quiz_tmpl.Execute(w, struct{ Quiz Quiz }{*active_quizzes[quiz_code]})
+			return
+		}
+
+		fmt.Fprintln(os.Stdout, r.FormValue("progress"))
+
+		if r.FormValue("progress") == "progress" {
+			active_quizzes[Code(quiz_code)].Next_question()
 		}
 	})
 
