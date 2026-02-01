@@ -197,16 +197,15 @@ func main() {
 
 	http.HandleFunc("/quiz/", func(w http.ResponseWriter, r *http.Request) {
 		quiz_code := Code(strings.ReplaceAll(r.URL.Path, "/quiz/", ""))
-		if r.Method != http.MethodPost {
-			quiz_tmpl.Execute(w, struct{ Quiz Quiz }{*active_quizzes[quiz_code]})
-			return
-		}
+		q := active_quizzes[quiz_code]
+		if r.Method == http.MethodPost {
+			fmt.Fprintln(os.Stdout, r.FormValue("progress"))
 
-		fmt.Fprintln(os.Stdout, r.FormValue("progress"))
-
-		if r.FormValue("progress") == "progress" {
-			active_quizzes[Code(quiz_code)].Next_question()
+			if r.FormValue("progress") != "" {
+				q.Next_question()
+			}
 		}
+		quiz_tmpl.Execute(w, struct{ Quiz Quiz }{*q})
 	})
 
 	http.ListenAndServe(":5656", nil)

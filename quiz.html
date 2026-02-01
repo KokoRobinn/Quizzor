@@ -51,9 +51,8 @@
         </form>
         <p style="visibility: hidden;">Answer submitted</p>
     {{end}}
-    <form method="POST">
-        <input name="progress" value="progress">
-        <button type="submit">{{if lt $quiz.Question_index 0}}Start Quiz{{else}}Next Question{{end}}</button>
+    <form action="" method="POST">
+        <button name="progress" value="progress">{{if lt $quiz.Question_index 0}}Start Quiz{{else}}Next Question{{end}}</button>
     </form>
     </div>
 <script>
