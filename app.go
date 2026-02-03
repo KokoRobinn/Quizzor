@@ -18,15 +18,21 @@ import (
 type Code string
 
 type Question struct {
-	Text    string   `json:"text"`
-	Timer_s int      `json:"timer_s"` //time in seconds
-	Options []string `json:"options"`
+	Text           string   `json:"text"`
+	Timer_s        int      `json:"timer_s"` //time in seconds
+	Correct_answer string   `json:"correct_answer"`
+	Options        []string `json:"options"`
+}
+
+type Answer struct {
+	Answer  string
+	Correct bool
 }
 
 type Player struct {
-	Name            string
-	Current_answer  string
-	Correct_answers []bool
+	Name           string
+	Current_answer string
+	Answers        []Answer
 }
 
 type Quiz struct {
@@ -36,7 +42,7 @@ type Quiz struct {
 	Global_timer_s int `json:"global_timer_s"` //overriden by question timer
 	Question_index int
 	Questions      []Question `json:"questions"`
-	Players        []Player
+	Players        map[string]*Player
 }
 
 var available_quizzes map[string]Quiz
@@ -45,6 +51,8 @@ var active_quizzes map[Code]*Quiz = make(map[Code]*Quiz)
 const QUIZZES_DIR string = "./quizzes"
 const CODE_LEN = 6
 const CODE_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const PLAYER_HASH_LEN = 10
+const PLAYER_HASH_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 type Broker struct {
 	clients map[chan string]bool
@@ -90,7 +98,7 @@ func (b *Broker) Broadcast(msg string) {
 }
 
 func (q *Quiz) Add_player(p Player) {
-	q.Players = append(q.Players, p)
+	q.Players[p.Name] = &p
 	fmt.Fprintln(os.Stdout, "Added player", p.Name, "to", q.Code, "\n\ttotal players:")
 	for _, plyr := range q.Players {
 		fmt.Fprint(os.Stdout, "\t\t", plyr.Name, "\n")
@@ -99,6 +107,14 @@ func (q *Quiz) Add_player(p Player) {
 }
 
 func (q *Quiz) Next_question() {
+	for _, p := range q.Players {
+		if q.Question_index >= 0 {
+			is_correct := p.Current_answer == q.Questions[q.Question_index].Correct_answer
+			p.Answers[q.Question_index] = Answer{p.Current_answer, is_correct}
+			fmt.Fprintln(os.Stdout, p.Answers)
+		}
+		p.Current_answer = ""
+	}
 	q.Question_index += 1
 	q.Broker.Broadcast("update")
 	fmt.Fprintln(os.Stdout, "Incremented question index!\n\t", q)
@@ -127,6 +143,20 @@ func make_code() Code {
 		code_arr[0] = CODE_CHARS[(int64(code_arr[0])^seed)%int64(len(CODE_CHARS))]
 	}
 	return Code(string(code_arr))
+}
+
+func make_player_hash(name string) string {
+	seed := time.Now().Local().UnixMicro()
+	player_hash := make([]byte, PLAYER_HASH_LEN)
+	player_hash[0] = PLAYER_HASH_CHARS[seed%int64(len(PLAYER_HASH_CHARS))]
+	for i := int64(1); i < CODE_LEN; i++ {
+		player_hash[i] = CODE_CHARS[(int64(player_hash[i-1])*seed^int64(name[i%int64(len(name))])>>i)%int64(len(CODE_CHARS))]
+	}
+	//TODO: make this more robust
+	for _, exists := active_quizzes[Code(string(player_hash))]; exists; {
+		player_hash[0] = CODE_CHARS[(int64(player_hash[0])^seed)%int64(len(CODE_CHARS))]
+	}
+	return string(player_hash)
 }
 
 func parse_quizzes() map[string]Quiz {
@@ -184,28 +214,58 @@ func main() {
 			new_quiz.Code = make_code()
 			new_quiz.Broker = newBroker()
 			new_quiz.Question_index = -1
-			new_quiz.Players = make([]Player, 0)
+			new_quiz.Players = make(map[string]*Player, 0)
 			http.HandleFunc("/events/"+string(new_quiz.Code), new_quiz.Broker.ServeHTTP)
 			fmt.Fprintln(os.Stdout, "Quiz", quiz_name, "not active! Instantiating new quiz with code:", new_quiz.Code)
 		}
 
-		new_quiz.Add_player(Player{player_name, "", make([]bool, 0)})
+		new_quiz.Add_player(Player{player_name, "", make([]Answer, len(new_quiz.Questions))})
 		active_quizzes[new_quiz.Code] = new_quiz
 
+		player_cookie := http.Cookie{
+			Name:     "player",
+			Value:    player_name,
+			Path:     "/",
+			MaxAge:   3600,
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteDefaultMode,
+		}
+
+		http.SetCookie(w, &player_cookie)
 		http.Redirect(w, r, "/quiz/"+string(new_quiz.Code), http.StatusSeeOther)
 	})
 
 	http.HandleFunc("/quiz/", func(w http.ResponseWriter, r *http.Request) {
+		player_cookie, err := r.Cookie("player")
+		http.SetCookie(w, player_cookie)
+		if err != nil {
+			fmt.Fprintln(os.Stdout, "Failed to get player_cookie:", err)
+		}
+
 		quiz_code := Code(strings.ReplaceAll(r.URL.Path, "/quiz/", ""))
 		q := active_quizzes[quiz_code]
+		p := q.Players[player_cookie.Value]
 		if r.Method == http.MethodPost {
-			fmt.Fprintln(os.Stdout, r.FormValue("progress"))
-
+			// Next question
 			if r.FormValue("progress") != "" {
+				if q.Question_index == len(q.Questions) {
+					http.Redirect(w, r, "/", http.StatusSeeOther)
+					return
+				}
 				q.Next_question()
 			}
+
+			// Answer submission
+			if a := r.FormValue("answer"); a != "" {
+				fmt.Fprintln(os.Stdout, "Player", p.Name, "answered", a, "in quiz", q.Name, ":", q.Question_index)
+				p.Current_answer = a
+			}
 		}
-		quiz_tmpl.Execute(w, struct{ Quiz Quiz }{*q})
+		quiz_tmpl.Execute(w, struct {
+			Quiz   Quiz
+			Player Player
+		}{*q, *p})
 	})
 
 	http.ListenAndServe(":5656", nil)

@@ -5,6 +5,7 @@
 		{
     		"text": "What is the capital of Madagascar?",
     		"timer_s": 30,
+			"correct_answer": "Antananarivo",
     		"options": [
 				"Antananarivo",
 				"Toamasina",

@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-    {{$quiz := .Quiz}}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
 		.center {
@@ -23,6 +22,8 @@
 </head>
 <body>
     <div class="page center">
+    {{$quiz := .Quiz}}
+    {{$l := len $quiz.Questions}}
     {{if lt $quiz.Question_index 0}}
     <!--Welcome screen-->
         <h1>Welcome to quiz {{$quiz.Name}}</h1> 
@@ -31,8 +32,8 @@
         {{range $p := $quiz.Players}}
             <div> &ensp;&ensp;&ensp;&ensp; {{$p.Name}} </div>
         {{end}}
-    {{else}}
-        <!--Question screen-->
+    {{else if lt $quiz.Question_index $l}}
+    <!--Question screen-->
         {{$question := index $quiz.Questions $quiz.Question_index}}
         <h1>Question {{$quiz.Question_index}}</h1>
         <form method="POST">
@@ -49,7 +50,18 @@
         {{end}}
         <button type="submit">Submit</button>
         </form>
-        <p style="visibility: hidden;">Answer submitted</p>
+        {{if ne .Player.Current_answer ""}}
+            <p>Current answer: {{.Player.Current_answer}}</p>
+        {{end}}
+    {{else}}
+    <!--End of Quiz-->
+        <h1>End of quiz!!!</h1>
+        <p>Your answers: </p>
+        <ul style="list-style-type: decimal;">
+        {{range $a := .Player.Answers}}
+            <li style="color: {{if $a.Correct}}MediumSeaGreen{{else}}Tomato{{end}};">{{$a.Answer}}</li>
+        {{end}}
+        </ul>
     {{end}}
     <form action="" method="POST">
         <button name="progress" value="progress">{{if lt $quiz.Question_index 0}}Start Quiz{{else}}Next Question{{end}}</button>
@@ -63,10 +75,6 @@
         if (event.data == "update") {
             location.reload();
         }
-        //const el = document.createElement('p');
-        //el.textContent = event.data;
-        //output.appendChild(el);
-        //output.scrollTop = output.scrollHeight;
     };
 
     source.onerror = (err) => {
