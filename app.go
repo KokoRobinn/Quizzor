@@ -224,7 +224,7 @@ func main() {
 
 		player_cookie := http.Cookie{
 			Name:     "player",
-			Value:    player_name,
+			Value:    make_player_hash(player_name),
 			Path:     "/",
 			MaxAge:   3600,
 			HttpOnly: true,
@@ -246,6 +246,7 @@ func main() {
 		quiz_code := Code(strings.ReplaceAll(r.URL.Path, "/quiz/", ""))
 		q := active_quizzes[quiz_code]
 		p := q.Players[player_cookie.Value]
+		fmt.Fprintln(os.Stdout, "Player cookie for player", p.Name, ":", player_cookie.Value)
 		if r.Method == http.MethodPost {
 			// Next question
 			if r.FormValue("progress") != "" {
