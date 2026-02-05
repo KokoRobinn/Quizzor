@@ -53,6 +53,7 @@ const CODE_LEN = 6
 const CODE_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const PLAYER_HASH_LEN = 10
 const PLAYER_HASH_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+const QUIZ_REFRESH_PERIOD time.Duration = 30
 
 type Broker struct {
 	clients map[chan string]bool
@@ -97,8 +98,8 @@ func (b *Broker) Broadcast(msg string) {
 	}
 }
 
-func (q *Quiz) Add_player(p Player) {
-	q.Players[p.Name] = &p
+func (q *Quiz) Add_player(p Player, hash string) {
+	q.Players[hash] = &p
 	fmt.Fprintln(os.Stdout, "Added player", p.Name, "to", q.Code, "\n\ttotal players:")
 	for _, plyr := range q.Players {
 		fmt.Fprint(os.Stdout, "\t\t", plyr.Name, "\n")
@@ -149,50 +150,68 @@ func make_player_hash(name string) string {
 	seed := time.Now().Local().UnixMicro()
 	player_hash := make([]byte, PLAYER_HASH_LEN)
 	player_hash[0] = PLAYER_HASH_CHARS[seed%int64(len(PLAYER_HASH_CHARS))]
-	for i := int64(1); i < CODE_LEN; i++ {
-		player_hash[i] = CODE_CHARS[(int64(player_hash[i-1])*seed^int64(name[i%int64(len(name))])>>i)%int64(len(CODE_CHARS))]
+	for i := int64(1); i < PLAYER_HASH_LEN; i++ {
+		player_hash[i] = PLAYER_HASH_CHARS[(int64(player_hash[i-1])*seed^int64(name[i%int64(len(name))])>>i)%int64(len(PLAYER_HASH_CHARS))]
 	}
 	//TODO: make this more robust
-	for _, exists := active_quizzes[Code(string(player_hash))]; exists; {
-		player_hash[0] = CODE_CHARS[(int64(player_hash[0])^seed)%int64(len(CODE_CHARS))]
-	}
+	//for _, exists := active_quizzes[Code(string(player_hash))]; exists; {
+	//	player_hash[0] = PLAYER_HASH_CHARS[(int64(player_hash[0])^seed)%int64(len(CODE_CHARS))]
+	//}
+	print("player hash ", string(player_hash), "\n")
 	return string(player_hash)
 }
 
-func parse_quizzes() map[string]Quiz {
-	quizzes_dir, err := os.ReadDir(QUIZZES_DIR)
-	if err != nil {
-		fmt.Println(err.Error())
+func delete_cookies(w http.ResponseWriter, r *http.Request) {
+	cookie := http.Cookie{
+		Name:    "session_token",
+		Value:   "",
+		Path:    "/",
+		Expires: time.Unix(0, 0), // Past date
+		MaxAge:  -1,
 	}
-	var quizzes map[string]Quiz = make(map[string]Quiz)
-	for _, q := range quizzes_dir {
-		var s string = q.Name()
-		s = strings.ReplaceAll(s, ".json", "")
+	http.SetCookie(w, &cookie)
+}
 
-		quiz_json_file, err := os.Open(path.Join(QUIZZES_DIR, q.Name()))
+func parse_quizzes(period time.Duration) {
+	for {
+		for k := range available_quizzes {
+			delete(available_quizzes, k)
+		}
+		quizzes_dir, err := os.ReadDir(QUIZZES_DIR)
 		if err != nil {
 			fmt.Println(err.Error())
 		}
-		quiz := Quiz{}
-		jsonParser := json.NewDecoder(quiz_json_file)
-		if err = jsonParser.Decode(&quiz); err != nil {
-			fmt.Println(err.Error())
-		}
-		quizzes[s] = quiz
-		fmt.Fprintln(os.Stdout, "Appended quiz:", s)
-		quiz_json_file.Close()
-	}
+		var quizzes map[string]Quiz = make(map[string]Quiz)
+		for _, q := range quizzes_dir {
+			var s string = q.Name()
+			s = strings.ReplaceAll(s, ".json", "")
 
-	return quizzes
+			quiz_json_file, err := os.Open(path.Join(QUIZZES_DIR, q.Name()))
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+			quiz := Quiz{}
+			jsonParser := json.NewDecoder(quiz_json_file)
+			if err = jsonParser.Decode(&quiz); err != nil {
+				fmt.Println(err.Error())
+			}
+			quizzes[s] = quiz
+			fmt.Fprintln(os.Stdout, "Appended quiz:", s)
+			quiz_json_file.Close()
+		}
+		available_quizzes = quizzes
+		time.Sleep(period * time.Minute)
+	}
 }
 
 func main() {
-	available_quizzes = parse_quizzes()
+	go parse_quizzes(QUIZ_REFRESH_PERIOD)
 	start_tmpl := template.Must(template.ParseFiles("main.html"))
 	quiz_tmpl := template.Must(template.ParseFiles("quiz.html"))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// Show start page
+		delete_cookies(w, r)
 		if r.Method != http.MethodPost {
 			start_tmpl.Execute(w, struct{ Quizzes []string }{slices.Collect(maps.Keys(available_quizzes))})
 			return
@@ -201,12 +220,12 @@ func main() {
 		quiz_name := r.FormValue("quiz_name")
 		player_name := r.FormValue("name")
 		new_quiz, active := active_quizzes[Code(quiz_name)]
-		fmt.Fprintln(os.Stdout, "Queried quiz:", quiz_name)
+		fmt.Fprintln(os.Stdout, "Player", player_name, "queried quiz:", quiz_name)
 		if !active {
 			available := true
 			src_quiz, available := available_quizzes[quiz_name]
 			new_quiz = src_quiz.Instantiate()
-			if !available {
+			if !available || player_name == "" {
 				//Go home
 				start_tmpl.Execute(w, struct{ Quizzes []string }{slices.Collect(maps.Keys(available_quizzes))})
 				return
@@ -219,17 +238,13 @@ func main() {
 			fmt.Fprintln(os.Stdout, "Quiz", quiz_name, "not active! Instantiating new quiz with code:", new_quiz.Code)
 		}
 
-		new_quiz.Add_player(Player{player_name, "", make([]Answer, len(new_quiz.Questions))})
+		player_hash := make_player_hash(player_name)
+		new_quiz.Add_player(Player{player_name, "", make([]Answer, len(new_quiz.Questions))}, player_hash)
 		active_quizzes[new_quiz.Code] = new_quiz
 
 		player_cookie := http.Cookie{
-			Name:     "player",
-			Value:    make_player_hash(player_name),
-			Path:     "/",
-			MaxAge:   3600,
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteDefaultMode,
+			Name:  "player",
+			Value: player_hash,
 		}
 
 		http.SetCookie(w, &player_cookie)
@@ -238,20 +253,25 @@ func main() {
 
 	http.HandleFunc("/quiz/", func(w http.ResponseWriter, r *http.Request) {
 		player_cookie, err := r.Cookie("player")
-		http.SetCookie(w, player_cookie)
 		if err != nil {
 			fmt.Fprintln(os.Stdout, "Failed to get player_cookie:", err)
 		}
 
 		quiz_code := Code(strings.ReplaceAll(r.URL.Path, "/quiz/", ""))
 		q := active_quizzes[quiz_code]
-		p := q.Players[player_cookie.Value]
-		fmt.Fprintln(os.Stdout, "Player cookie for player", p.Name, ":", player_cookie.Value)
+		p, p_exists := q.Players[player_cookie.Value]
+		if !p_exists {
+			fmt.Fprint(w, "I don't know who you are!\n No player found with hash: ", player_cookie.Value)
+			return
+		}
+		fmt.Fprintln(os.Stdout, "Player cookie for player", p.Name, ":", player_cookie)
 		if r.Method == http.MethodPost {
 			// Next question
 			if r.FormValue("progress") != "" {
 				if q.Question_index == len(q.Questions) {
+					q.Broker.Broadcast("home")
 					http.Redirect(w, r, "/", http.StatusSeeOther)
+					delete(active_quizzes, quiz_code)
 					return
 				}
 				q.Next_question()

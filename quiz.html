@@ -75,6 +75,12 @@
         if (event.data == "update") {
             location.reload();
         }
+        else if (event.data == "home") {
+            window.location.replace("/");
+        }
+        else {
+            console.log("Unknown event: ", event.data);
+        }
     };
 
     source.onerror = (err) => {
