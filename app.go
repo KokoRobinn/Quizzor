@@ -112,7 +112,6 @@ func (q *Quiz) Next_question() {
 		if q.Question_index >= 0 {
 			is_correct := p.Current_answer == q.Questions[q.Question_index].Correct_answer
 			p.Answers[q.Question_index] = Answer{p.Current_answer, is_correct}
-			fmt.Fprintln(os.Stdout, p.Answers)
 		}
 		p.Current_answer = ""
 	}
@@ -157,7 +156,6 @@ func make_player_hash(name string) string {
 	//for _, exists := active_quizzes[Code(string(player_hash))]; exists; {
 	//	player_hash[0] = PLAYER_HASH_CHARS[(int64(player_hash[0])^seed)%int64(len(CODE_CHARS))]
 	//}
-	print("player hash ", string(player_hash), "\n")
 	return string(player_hash)
 }
 
@@ -196,7 +194,7 @@ func parse_quizzes(period time.Duration) {
 				fmt.Println(err.Error())
 			}
 			quizzes[s] = quiz
-			fmt.Fprintln(os.Stdout, "Appended quiz:", s)
+			fmt.Fprintln(os.Stdout, "Added quiz:", s)
 			quiz_json_file.Close()
 		}
 		available_quizzes = quizzes
@@ -264,7 +262,6 @@ func main() {
 			fmt.Fprint(w, "I don't know who you are!\n No player found with hash: ", player_cookie.Value)
 			return
 		}
-		fmt.Fprintln(os.Stdout, "Player cookie for player", p.Name, ":", player_cookie)
 		if r.Method == http.MethodPost {
 			// Next question
 			if r.FormValue("progress") != "" {
