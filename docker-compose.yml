@@ -1,0 +1,10 @@
+services:
+  door:
+    image: kokorobin/quizzor:latest
+    container_name: quizzor
+    user: 1000:1000
+    volumes:
+      - ./codes:/codes
+    ports:
+      - "127.0.0.1:4646:4646"
+    restart: 'unless-stopped'
