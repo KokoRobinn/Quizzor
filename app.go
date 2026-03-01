@@ -182,8 +182,6 @@ func parse_quizzes(period time.Duration) {
 		}
 		var quizzes map[string]Quiz = make(map[string]Quiz)
 		for _, q := range quizzes_dir {
-			var s string = q.Name()
-			s = strings.ReplaceAll(s, ".json", "")
 
 			quiz_json_file, err := os.Open(path.Join(QUIZZES_DIR, q.Name()))
 			if err != nil {
@@ -194,8 +192,8 @@ func parse_quizzes(period time.Duration) {
 			if err = jsonParser.Decode(&quiz); err != nil {
 				fmt.Println(err.Error())
 			}
-			quizzes[s] = quiz
-			fmt.Fprintln(os.Stdout, "Added quiz:", s)
+			quizzes[quiz.Name] = quiz
+			fmt.Fprintln(os.Stdout, "Added quiz:", quiz.Name)
 			quiz_json_file.Close()
 		}
 		available_quizzes = quizzes

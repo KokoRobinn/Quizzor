@@ -1,0 +1,17 @@
+{
+	"name": "The king of Omashu",
+	"global_timer_s": -1,
+	"questions": [
+		{
+    		"text": "What is my name?",
+    		"timer_s": 30,
+			"correct_answer": "Bumi",
+    		"options": [
+				"Ozai",
+				"Bumi",
+				"Gyatso",
+				"Bah"
+    		]
+		}
+	]
+}
