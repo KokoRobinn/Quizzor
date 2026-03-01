@@ -39,7 +39,7 @@
                 {{end}}
             {{else}}
                 <!--Free text (WIP)-->
-                <input type="text" placeholder="Write an answer..." name="free-text">
+                <input type="text" onchange="this.form.submit();" placeholder="Write an answer..." name="answer" {{if ne $curr_ans ""}} value="{{$curr_ans}}" {{end}}>
             {{end}}
             </form>
         {{else}}

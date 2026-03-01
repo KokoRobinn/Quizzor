@@ -31,3 +31,7 @@ I plan to put paths to all imported data (quizzes and stylesheet) in environment
 1. The available quizzes are currently autocompletes for a text input and do not appear correctly on mobile.
 
 2. The styling is currently quite hacked together and can lead main box to assume weird aspect ratios.
+
+3. Due to me not feeling like writing much JS, clients retrieve new information from server by refreshing the page.
+This is not clean and leads to issues like free text answers will refresh the page when unfocusing the text input and thus not letting you progress the quiz with one click of the "Next Question" button, but two.
+
