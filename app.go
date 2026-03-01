@@ -49,8 +49,9 @@ var available_quizzes map[string]Quiz
 var active_quizzes map[Code]*Quiz = make(map[Code]*Quiz)
 
 const QUIZZES_DIR string = "./quizzes"
+const STYLE_LINK string = "https://kokorobin.se/style.css"
 const CODE_LEN = 6
-const CODE_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const CODE_CHARS = "123456789ABCDEFGHIJKLMNPQRSTUVWXYZ"
 const PLAYER_HASH_LEN = 10
 const PLAYER_HASH_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const QUIZ_REFRESH_PERIOD time.Duration = 30
@@ -211,7 +212,10 @@ func main() {
 		// Show start page
 		delete_cookies(w, r)
 		if r.Method != http.MethodPost {
-			start_tmpl.Execute(w, struct{ Quizzes []string }{slices.Collect(maps.Keys(available_quizzes))})
+			start_tmpl.Execute(w, struct {
+				Quizzes    []string
+				Style_link string
+			}{slices.Collect(maps.Keys(available_quizzes)), STYLE_LINK})
 			return
 		}
 
@@ -225,7 +229,10 @@ func main() {
 			new_quiz = src_quiz.Instantiate()
 			if !available || player_name == "" {
 				//Go home
-				start_tmpl.Execute(w, struct{ Quizzes []string }{slices.Collect(maps.Keys(available_quizzes))})
+				start_tmpl.Execute(w, struct {
+					Quizzes    []string
+					Style_link string
+				}{slices.Collect(maps.Keys(available_quizzes)), STYLE_LINK})
 				return
 			}
 			new_quiz.Code = make_code()
@@ -281,9 +288,10 @@ func main() {
 			}
 		}
 		quiz_tmpl.Execute(w, struct {
-			Quiz   Quiz
-			Player Player
-		}{*q, *p})
+			Quiz       Quiz
+			Player     Player
+			Style_link string
+		}{*q, *p, STYLE_LINK})
 	})
 
 	http.ListenAndServe(":5656", nil)

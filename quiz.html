@@ -2,90 +2,74 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-		.center {
-            margin: 0;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            -ms-transform: translate(-50%, -50%);
-            transform: translate(-50%, -50%);
-		}
-        .page {
-            background: #c0c0c0;
-            border: 3px solid #d0d0d0;
-	    	padding: 10px;
-            width: 50vmax;
-    	    height: 25vmax;
-       	}
-    </style>
+    <link rel="stylesheet" href="{{.Style_link}}">
 </head>
-<body>
-    <div class="page center">
-    {{$quiz := .Quiz}}
-    {{$l := len $quiz.Questions}}
-    {{if lt $quiz.Question_index 0}}
-    <!--Welcome screen-->
-        <h1>Welcome to quiz {{$quiz.Name}}</h1> 
-        code: {{$quiz.Code}} <br>
-        players: <br>
-        {{range $p := $quiz.Players}}
-            <div> &ensp;&ensp;&ensp;&ensp; {{$p.Name}} </div>
-        {{end}}
-    {{else if lt $quiz.Question_index $l}}
-    <!--Question screen-->
-        {{$question := index $quiz.Questions $quiz.Question_index}}
-        <h1>Question {{$quiz.Question_index}}</h1>
-        <form method="POST">
-        <p>{{$question.Text}}</p>
-        {{if $question.Options}}
-        <!--Radio button select-->
-        {{range $o := $question.Options}}
-        <input type="radio" id="{{$o}}" name="answer" value="{{$o}}">
-        <label for="{{$o}}">{{$o}}</label><br>
-        {{end}}
+<body class="bg">
+    <div class="page">
+        {{$quiz := .Quiz}}
+        {{$l := len $quiz.Questions}}
+        {{$curr_ans := .Player.Current_answer}}
+        {{if lt $quiz.Question_index 0}}
+        <!--Welcome screen-->
+            <h1>Welcome to quiz {{$quiz.Name}}</h1> 
+        <div class="formbg">
+            code: {{$quiz.Code}} <br>
+            players:<br>
+            {{range $p := $quiz.Players}}
+                <div>&ensp;&ensp;&ensp;&ensp;{{$p.Name}}</div>
+            {{end}}
+        {{else if lt $quiz.Question_index $l}}
+        <!--Question screen-->
+            {{$question := index $quiz.Questions $quiz.Question_index}}
+            <h1>Question {{$quiz.Question_index}}</h1>
+        <div class="formbg">
+            <form method="POST">
+            <p>{{$question.Text}}</p>
+            {{if $question.Options}}
+                <!--Radio button select-->
+                {{range $o := $question.Options}}
+                    <label for="{{$o}}" class="form-control">{{$o}}</label>
+                    <input onchange="this.form.submit();" type="radio" name="answer" value="{{$o}}" id="{{$o}}" {{if eq $curr_ans $o }} checked="checked" selected="selected" {{end}} />
+                {{end}}
+            {{else}}
+                <!--Free text (WIP)-->
+                <input type="text" placeholder="Write an answer..." name="free-text">
+            {{end}}
+            </form>
         {{else}}
-        <!--Free text (WIP)-->
-        <input type="text" placeholder="Write an answer..." name="free-text">
+        <!--End of Quiz-->
+            <h1>End of quiz!!!</h1>
+        <div class="formbg">
+            <p>Your answers: </p>
+            <ul style="list-style-type: decimal;">
+            {{range $a := .Player.Answers}}
+                <li style="color: {{if $a.Correct}}MediumSeaGreen{{else}}Tomato{{end}};">{{$a.Answer}}</li>
+            {{end}}
+            </ul>
         {{end}}
-        <button type="submit">Submit</button>
+        <form action="" method="POST">
+            <button name="progress" value="progress">{{if lt $quiz.Question_index 0}}Start Quiz{{else if lt $quiz.Question_index $l}}Next Question{{else}}Finish Quiz{{end}}</button>
         </form>
-        {{if ne .Player.Current_answer ""}}
-            <p>Current answer: {{.Player.Current_answer}}</p>
-        {{end}}
-    {{else}}
-    <!--End of Quiz-->
-        <h1>End of quiz!!!</h1>
-        <p>Your answers: </p>
-        <ul style="list-style-type: decimal;">
-        {{range $a := .Player.Answers}}
-            <li style="color: {{if $a.Correct}}MediumSeaGreen{{else}}Tomato{{end}};">{{$a.Answer}}</li>
-        {{end}}
-        </ul>
-    {{end}}
-    <form action="" method="POST">
-        <button name="progress" value="progress">{{if lt $quiz.Question_index 0}}Start Quiz{{else}}Next Question{{end}}</button>
-    </form>
+        </div class="formbg">
+        <script>
+            const source = new EventSource('/events/{{$quiz.Code}}');
+        
+            source.onmessage = (event) => {
+                if (event.data == "update") {
+                    location.reload();
+                }
+                else if (event.data == "home") {
+                    window.location.replace("/");
+                }
+                else {
+                    console.log("Unknown event: ", event.data);
+                }
+            };
+        
+            source.onerror = (err) => {
+                console.error('EventSource failed:', err);
+            };
+        </script>
     </div>
-<script>
-    const output = document.getElementById('output');
-    const source = new EventSource('/events/{{$quiz.Code}}');
-
-    source.onmessage = (event) => {
-        if (event.data == "update") {
-            location.reload();
-        }
-        else if (event.data == "home") {
-            window.location.replace("/");
-        }
-        else {
-            console.log("Unknown event: ", event.data);
-        }
-    };
-
-    source.onerror = (err) => {
-        console.error('EventSource failed:', err);
-    };
-</script>
 </body>
 </html>

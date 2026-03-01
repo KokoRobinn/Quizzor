@@ -3,44 +3,30 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-		.center {
-            margin: 0;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            -ms-transform: translate(-50%, -50%);
-            transform: translate(-50%, -50%);
-		}
-        .page {
-            background: #c0c0c0;
-            border: 3px solid #d0d0d0;
-	    	padding: 10px;
-            width: 50vmax;
-    	    height: 25vmax;
-       	}
-    </style>
+	<link rel="stylesheet" href="{{.Style_link}}">
 </head>
-<body>
-    <div class="page center">
-	<h1 style="text-align: center;">Welcome to quizzes!</h1>
-	<p>Choose a quiz to start a game or enter a code to join one</p><br>
-	<form method="POST">
-		<label style="font-size: large;">Quiz or Code</label>
-	    <input type="text" list="quizlist" name="quiz_name" autocomplete="off">
-
-	    <datalist id="quizlist">
-	    {{range $quiz := .Quizzes}}
-	    	<option value="{{$quiz}}">{{$quiz}}</option>	
-	    {{end}}
-	    </datalist>
-
-		<br>
-		<label style="font-size: large;">Player Name</label>
-		<input type="text" name="name">
-
-	    <button type="submit">Start</button>
-	</form>
+<body class="bg">
+    <div class="page">
+	<div>
+		<h1 class="header">Welcome to quizzes!</h1>
+		<h2>Choose a quiz to start a game or enter a code to join one</h2><br>
+	</div>
+		<div class="formbg">
+			<form method="POST">
+				<label>Quiz or Code:</label>
+			    <input type="text" list="quizlist" name="quiz_name" autocomplete="off">
+			    <datalist id="quizlist">
+			    {{range $quiz := .Quizzes}}
+			    	<option value="{{$quiz}}">{{$quiz}}</option>	
+			    {{end}}
+			    </datalist>
+				<br>
+				<label>Player Name:</label>
+				<input type="text" name="name">
+				<br>
+			    <button type="submit">Start</button>
+			</form>
+		</div>
     </div>
 </body>
 </html>
