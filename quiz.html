@@ -11,13 +11,19 @@
         {{$curr_ans := .Player.Current_answer}}
         {{if lt $quiz.Question_index 0}}
         <!--Welcome screen-->
-            <h1>Welcome to quiz {{$quiz.Name}}</h1> 
+            <h1>{{$quiz.Name}}</h1> 
         <div class="formbg">
-            code: {{$quiz.Code}} <br>
-            players:<br>
-            {{range $p := $quiz.Players}}
-                <div>&ensp;&ensp;&ensp;&ensp;{{$p.Name}}</div>
-            {{end}}
+            <p style="text-align: center;">Code: {{$quiz.Code}}</p> <br>
+            <div style="float: left; width: 50%;">
+                <p style="text-align: center;">Players</p><br>
+                {{range $p := $quiz.Players}}
+                    <span>{{$p.Name}}</span><br>
+                {{end}}
+            </div>
+            <div style="float: right; width: 50%;">
+            <p style="text-align: center;">Quiz</p><br> 
+            <span>Length: {{$l}}</span>
+            </div>
         {{else if lt $quiz.Question_index $l}}
         <!--Question screen-->
             {{$question := index $quiz.Questions $quiz.Question_index}}
