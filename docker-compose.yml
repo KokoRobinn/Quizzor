@@ -1,5 +1,5 @@
 services:
-  door:
+  quizzor:
     build: .
     container_name: quizzor
     user: 1000:1000
