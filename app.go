@@ -48,8 +48,7 @@ type Quiz struct {
 var available_quizzes map[string]Quiz
 var active_quizzes map[Code]*Quiz = make(map[Code]*Quiz)
 
-const QUIZZES_DIR string = "./quizzes"
-const STYLE_LINK string = "https://kokorobin.se/style.css"
+const QUIZZES_DIR = "./quizzes"
 const CODE_LEN = 6
 const CODE_CHARS = "123456789ABCDEFGHIJKLMNPQRSTUVWXYZ"
 const PLAYER_HASH_LEN = 10
@@ -212,8 +211,7 @@ func main() {
 		if r.Method != http.MethodPost {
 			start_tmpl.Execute(w, struct {
 				Quizzes    []string
-				Style_link string
-			}{slices.Collect(maps.Keys(available_quizzes)), STYLE_LINK})
+			}{slices.Collect(maps.Keys(available_quizzes))})
 			return
 		}
 
@@ -229,8 +227,7 @@ func main() {
 				//Go home
 				start_tmpl.Execute(w, struct {
 					Quizzes    []string
-					Style_link string
-				}{slices.Collect(maps.Keys(available_quizzes)), STYLE_LINK})
+				}{slices.Collect(maps.Keys(available_quizzes))})
 				return
 			}
 			new_quiz.Code = make_code()
@@ -288,9 +285,11 @@ func main() {
 		quiz_tmpl.Execute(w, struct {
 			Quiz       Quiz
 			Player     Player
-			Style_link string
-		}{*q, *p, STYLE_LINK})
+		}{*q, *p})
 	})
+
+    fs := http.FileServer(http.Dir("/static/"))
+    http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	http.ListenAndServe(":5656", nil)
 }

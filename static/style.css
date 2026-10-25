@@ -1,0 +1,127 @@
+:root {
+	--form-control-color: #9f55ab;
+}
+*,
+*:before,
+*:after {
+	box-sizing: border-box;
+}
+.form-control {
+	font-family: Monospace;
+	font-size: 1.2rem;
+	font-weight: bold;
+	line-height: 1.1;
+	position: absolute;
+	transform: translateX(2em)
+}
+html, body {
+	height: 100%;
+}
+body {
+	margin: 0;
+	background: #2a1232;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+h1 {
+	text-decoration-line: underline;
+	text-align: center;
+	font-size: 3em;
+	margin-top: 0.2em;
+}
+h2 {
+	font-style: italic;
+	text-align: center;
+	font-size: 1.4em;
+}
+p {
+	font-weight: bold;
+	margin: 0.5em;
+}
+ul {
+	margin: 2em;
+}
+button {
+	font-family: Monospace;
+	font-weight: bold;
+	font-size: 1em;
+	background: #ffaaff;
+	border-radius: 25px;
+	border-width: 0;
+	width: 100%;
+	margin-top: 30px;
+	padding: 5px;
+}
+label, input {
+	font-size: 1em;
+	margin: auto;
+	max-width: 100%;
+}
+input[type=text] {
+	border-radius: 0.5em;
+	border: none;
+	padding: 0.3em;
+	margin: 0.1em;
+	width: 100%;
+}
+input[type="radio"] {
+	appearance: none;
+	background-color: #fff;
+	margin: 2px;
+	font: inherit;
+	color: currentColor;
+	height: 1.5em;
+	width: 1.5em;
+	border: 0.12em solid currentColor;
+	border-radius: 50%;
+	transform: translateY(-0.18em);
+	display: grid;
+	place-content: center;
+}
+.form-control + .form-control {
+	margin-top: 1em;
+}
+input[type="radio"]::before {
+	content: "";
+	width: 16em;
+	max-width: 1em;
+	height: 1em;
+	border-radius: 50%;
+	transform: scale(0);
+	transition: 100ms transform ease-in-out;
+	box-shadow: inset 1em 1em var(--form-control-color);
+}
+input[type="radio"]:checked::before {
+	transform: scale(1);
+}
+.formbg {
+	font-size: 1.6em;
+	background: var(--form-control-color);
+	width: min(90%, 500px);
+	min-height: min(262px, 100%);
+	padding: 20pt;
+	border-radius: 1em;
+	margin: 2em;
+	margin-top: 0;
+	margin-bottom: 1em;
+	box-shadow: 10px 10px 0 0 #af75cb
+}
+.page {
+	display: flex;
+	flex-flow: column;
+	align-items: center;
+	justify-content: space-between;
+	font-family: Monospace;
+	background: #dfaaff;
+	border: 3px solid #a212c9;
+	padding: 20px;
+	border-radius: 35px;
+	justify-content: center;
+	margin: auto;
+	width: 65em;
+	min-width: 300px;
+	height: 45em;
+	min-height: max-content;
+}
+

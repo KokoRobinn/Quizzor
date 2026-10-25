@@ -4,6 +4,7 @@ services:
     container_name: quizzor
     user: 1000:1000
     volumes:
+      - ./static:/static:ro
       - ./codes:/codes
     ports:
       - "127.0.0.1:5656:5656"
