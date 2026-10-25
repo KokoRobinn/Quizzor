@@ -2,31 +2,34 @@
 <!-- main.html -->
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="/static/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="bg">
-    <div class="page">
-	<div>
-		<h1 class="header">Welcome to quizzes!</h1>
-		<h2>Choose a quiz to start a game or enter a code to join one</h2><br>
-	</div>
-		<div class="formbg">
-			<form method="POST">
-				<label>Quiz or Code:</label>
-			    <input type="text" list="quizlist" name="quiz_name" autocomplete="off">
-			    <datalist id="quizlist">
-			    {{range $quiz := .Quizzes}}
-			    	<option value="{{$quiz}}">{{$quiz}}</option>	
-			    {{end}}
-			    </datalist>
-				<br>
-				<label>Player Name:</label>
-				<input type="text" name="name">
-				<br>
-			    <button type="submit">Start</button>
-			</form>
-		</div>
+  <div class="page">
+  <div>
+    <h1 class="header">Welcome to quizzes!</h1>
+    <h2>Choose a quiz to start a game or enter a code to join one</h2><br>
     </div>
+      <div class="formbg">
+      <form method="POST">
+        <label>Select Quiz:</label>
+        <select class="dropdown" name="quiz_name">
+          <option value="nil" disabled selected hidden>None Selected</option>
+        {{range $quiz := .Quizzes}}
+          <option value="{{$quiz}}">{{$quiz}}</option>	
+        {{end}}
+        </select>
+        <span style="font-size: smaller; text-align: center; display: inline-block; width: 100%;">or</span><br>
+        <label>Enter Code:</label>
+        <input type="text" name="code" autocomplete="off">
+        <br>
+        <label>Player Name:</label>
+        <input type="text" name="name">
+        <br>
+        <button type="submit">Start</button>
+      </form>
+    </div>
+  </div>
 </body>
 </html>

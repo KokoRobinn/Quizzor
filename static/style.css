@@ -53,12 +53,8 @@ button {
 	margin-top: 30px;
 	padding: 5px;
 }
-label, input {
-	font-size: 1em;
-	margin: auto;
-	max-width: 100%;
-}
-input[type=text] {
+input[type=text], select {
+	font-size: 0.9em;
 	border-radius: 0.5em;
 	border: none;
 	padding: 0.3em;
@@ -96,6 +92,8 @@ input[type="radio"]:checked::before {
 	transform: scale(1);
 }
 .formbg {
+	display: flex;
+	flex-direction: column;
 	font-size: 1.6em;
 	background: var(--form-control-color);
 	width: min(90%, 500px);

@@ -217,7 +217,8 @@ func main() {
 
 		quiz_name := r.FormValue("quiz_name")
 		player_name := r.FormValue("name")
-		new_quiz, active := active_quizzes[Code(quiz_name)]
+		code := r.FormValue("code")
+		new_quiz, active := active_quizzes[Code(code)]
 		fmt.Fprintln(os.Stdout, "Player", player_name, "queried quiz:", quiz_name)
 		if !active {
 			available := true
