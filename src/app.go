@@ -48,7 +48,7 @@ type Quiz struct {
 var available_quizzes map[string]Quiz
 var active_quizzes map[Code]*Quiz = make(map[Code]*Quiz)
 
-const QUIZZES_DIR = "./quizzes"
+const QUIZZES_DIR = "/quizzes"
 const CODE_LEN = 6
 const CODE_CHARS = "123456789ABCDEFGHIJKLMNPQRSTUVWXYZ"
 const PLAYER_HASH_LEN = 10
