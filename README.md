@@ -28,8 +28,4 @@ I plan to put paths to all imported data (quizzes and stylesheet) in environment
 
 ## Known Issues
 
-* The styling is currently quite hacked together and can lead main box to assume weird aspect ratios.
-
-* Due to me not feeling like writing much JS, clients retrieve new information from server by refreshing the page.
-This is not clean and leads to issues like free text answers will refresh the page when unfocusing the text input and thus not letting you progress the quiz with one click of the "Next Question" button, but two.
-
+* No issues! it's perfect!

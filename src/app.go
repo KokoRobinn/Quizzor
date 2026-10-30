@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -18,6 +19,7 @@ import (
 type Code string
 
 type Question struct {
+	Index          int      `json:"index"`
 	Text           string   `json:"text"`
 	Timer_s        int      `json:"timer_s"` //time in seconds
 	Correct_answer string   `json:"correct_answer"`
@@ -47,6 +49,7 @@ type Quiz struct {
 
 var available_quizzes map[string]Quiz
 var active_quizzes map[Code]*Quiz = make(map[Code]*Quiz)
+var secret_re = regexp.MustCompile(`"correct_answer":"((\\")|[^"])+",`)
 
 const QUIZZES_DIR = "/quizzes"
 const CODE_LEN = 6
@@ -98,13 +101,13 @@ func (b *Broker) Broadcast(msg string) {
 	}
 }
 
-func (q *Quiz) Add_player(p Player, hash string) {
-	q.Players[hash] = &p
-	fmt.Fprintln(os.Stdout, "Added player", p.Name, "to", q.Code, "\n\ttotal players:")
-	for _, plyr := range q.Players {
-		fmt.Fprint(os.Stdout, "\t\t", plyr.Name, "\n")
+func (q *Quiz) Add_player(player Player, hash string) {
+	q.Players[hash] = &player
+	fmt.Fprintln(os.Stdout, "Added player", player.Name, "to", q.Code, "\n\ttotal players:")
+	for _, p := range q.Players {
+		fmt.Fprint(os.Stdout, "\t\t", p.Name, "\n")
 	}
-	q.Broker.Broadcast("update")
+	q.Broker.Broadcast("p: " + player.Name)
 }
 
 func (q *Quiz) Next_question() {
@@ -116,8 +119,18 @@ func (q *Quiz) Next_question() {
 		p.Current_answer = ""
 	}
 	q.Question_index += 1
-	q.Broker.Broadcast("update")
 	fmt.Fprintln(os.Stdout, "Incremented question index!\n\t", q)
+	if q.Question_index < len(q.Questions) {
+		j, err := json.Marshal(q.Questions[q.Question_index])
+		if err != nil {
+			fmt.Println(err)
+		}
+		// Respond with question without the correct answer
+		// It is not elegant but can't think of nicer solution ATM
+		q.Broker.Broadcast("q: " + secret_re.ReplaceAllString(string(j), ``))
+	} else {
+		q.Broker.Broadcast("q: {}")
+	}
 }
 
 func (q Quiz) Instantiate() *Quiz {
@@ -191,6 +204,10 @@ func parse_quizzes(period time.Duration) {
 			if err = jsonParser.Decode(&quiz); err != nil {
 				fmt.Println(err.Error())
 			}
+			for i, question := range quiz.Questions {
+				question.Index = i
+				quiz.Questions[i] = question
+			}
 			quizzes[quiz.Name] = quiz
 			fmt.Fprintln(os.Stdout, "Added quiz:", quiz.Name)
 			quiz_json_file.Close()
@@ -210,7 +227,7 @@ func main() {
 		delete_cookies(w, r)
 		if r.Method != http.MethodPost {
 			start_tmpl.Execute(w, struct {
-				Quizzes    []string
+				Quizzes []string
 			}{slices.Collect(maps.Keys(available_quizzes))})
 			return
 		}
@@ -227,7 +244,7 @@ func main() {
 			if !available || player_name == "" {
 				//Go home
 				start_tmpl.Execute(w, struct {
-					Quizzes    []string
+					Quizzes []string
 				}{slices.Collect(maps.Keys(available_quizzes))})
 				return
 			}
@@ -284,13 +301,13 @@ func main() {
 			}
 		}
 		quiz_tmpl.Execute(w, struct {
-			Quiz       Quiz
-			Player     Player
+			Quiz   Quiz
+			Player Player
 		}{*q, *p})
 	})
 
-    fs := http.FileServer(http.Dir("/static/"))
-    http.Handle("/static/", http.StripPrefix("/static/", fs))
+	fs := http.FileServer(http.Dir("/static/"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	http.ListenAndServe(":5656", nil)
 }

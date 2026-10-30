@@ -15,7 +15,7 @@
             <h1>{{$quiz.Name}}</h1> 
         <div class="formbg">
             <p style="text-align: center;">Code: {{$quiz.Code}}</p> <br>
-            <div style="float: left; width: 50%;">
+            <div id="player-list" style="float: left; width: 50%;">
                 <p style="text-align: center;">Players</p><br>
                 {{range $p := $quiz.Players}}
                     <span>{{$p.Name}}</span><br>
@@ -27,10 +27,10 @@
             </div>
         {{else if lt $quiz.Question_index $l}}
         <!--Question screen-->
-            {{$question := index $quiz.Questions $quiz.Question_index}}
-            <h1>Question {{$quiz.Question_index}}</h1>
+        {{$question := index $quiz.Questions $quiz.Question_index}}
+        <h1 id="question-header">Question {{$quiz.Question_index}}</h1>
         <div class="formbg">
-            <form method="POST">
+            <form method="POST" id="question-form">
             <p>{{$question.Text}}</p>
             {{if $question.Options}}
                 <!--Radio button select-->
@@ -58,25 +58,74 @@
             <button name="progress" value="progress">{{if lt $quiz.Question_index 0}}Start Quiz{{else if lt $quiz.Question_index $l}}Next Question{{else}}Finish Quiz{{end}}</button>
         </form>
         </div class="formbg">
-        <script>
-            const source = new EventSource('/events/{{$quiz.Code}}');
-        
-            source.onmessage = (event) => {
-                if (event.data == "update") {
-                    location.reload();
-                }
-                else if (event.data == "home") {
-                    window.location.replace("/");
-                }
-                else {
-                    console.log("Unknown event: ", event.data);
-                }
-            };
-        
-            source.onerror = (err) => {
-                console.error('EventSource failed:', err);
-            };
-        </script>
     </div>
 </body>
 </html>
+<script>
+const source = new EventSource('/events/{{$quiz.Code}}');
+var curr_q = "";
+
+source.onmessage = (event) => {
+    if (event.data.indexOf("q: ") === 0) {
+        new_question(JSON.parse(event.data.substring(3, )));
+    }
+    {{if lt $quiz.Question_index 0}}
+    else if (event.data.indexOf("p: ") === 0) {
+        new_player(event.data.substring(3, ));
+    }
+    {{end}}
+    else if (event.data == "home") {
+        window.location.replace("/");
+    }
+    else {
+        console.log("Unknown event: ", event.data);
+    }
+};
+
+source.onerror = (err) => {
+    console.error('EventSource failed:', err);
+};
+
+function radio_button_option(option) {
+return radio_button = `<label for="${option}" class="form-control">${option}</label>
+                       <input onchange="this.form.submit();" type="radio" name="answer" value="${option}" id="${option}"/>`
+}
+
+function new_question(q) {
+    console.log("new_question:", q);
+    curr_q = q;
+    // Start screen
+    {{if lt $quiz.Question_index 0}}
+    location.reload();
+    // mid quiz
+    {{else if lt $quiz.Question_index $l}}
+    const form = document.getElementById("question-form");
+    const header = document.getElementById("question-header");
+    form.innerHTML = `<p>${q.text}</p>`;
+    header.innerHTML = `Question ${q.index}`
+    // multiple choice
+    if (q.options != null) {
+        q.options.forEach(o => {
+            form.innerHTML += radio_button_option(o);
+        });    
+    }
+    else {
+        form.innerHTML += `<input type="text" onchange="this.form.submit();" placeholder="Write an answer..." name="answer">`
+    }
+    {{else}}
+    location.reload()
+    {{end}}
+}
+
+function submit_answer() {
+    //TODO: finish
+}
+
+{{if lt $quiz.Question_index 0}}
+function new_player(p) {
+    console.log("new player:", p);
+    list = document.getElementById("player-list");
+    list.innerHTML += `<span>${p}</span><br>`;
+}
+{{end}}
+</script>
