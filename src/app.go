@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"maps"
 	"net/http"
 	"os"
@@ -284,7 +285,7 @@ func main() {
 		}
 		if r.Method == http.MethodPost {
 			// Next question
-			if r.FormValue("progress") != "" {
+			if len(r.Header["Progress"]) != 0 {
 				if q.Question_index == len(q.Questions) {
 					q.Broker.Broadcast("home")
 					http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -295,9 +296,9 @@ func main() {
 			}
 
 			// Answer submission
-			if a := r.FormValue("answer"); a != "" {
-				fmt.Fprintln(os.Stdout, "Player", p.Name, "answered", a, "in quiz", q.Name, ":", q.Question_index)
-				p.Current_answer = a
+			if body_bytes, err := io.ReadAll(r.Body); err == nil {
+				fmt.Fprintln(os.Stdout, "Player", p.Name, "answered", string(body_bytes), "in quiz", q.Name, ":", q.Question_index)
+				p.Current_answer = string(body_bytes)
 			}
 		}
 		quiz_tmpl.Execute(w, struct {

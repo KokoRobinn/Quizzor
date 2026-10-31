@@ -30,17 +30,17 @@
         {{$question := index $quiz.Questions $quiz.Question_index}}
         <h1 id="question-header">Question {{$quiz.Question_index}}</h1>
         <div class="formbg">
-            <form method="POST" id="question-form">
+            <form id="question-form">
             <p>{{$question.Text}}</p>
             {{if $question.Options}}
                 <!--Radio button select-->
                 {{range $o := $question.Options}}
                     <label for="{{$o}}" class="form-control">{{$o}}</label>
-                    <input onchange="this.form.submit();" type="radio" name="answer" value="{{$o}}" id="{{$o}}" {{if eq $curr_ans $o }} checked="checked" selected="selected" {{end}} />
+                    <input id="input-elem" onchange="submit_answer();" type="radio" value="{{$o}}" id="{{$o}}" {{if eq $curr_ans $o }} checked="checked" selected="selected" {{end}} />
                 {{end}}
             {{else}}
                 <!--Free text (WIP)-->
-                <input type="text" onchange="this.form.submit();" placeholder="Write an answer..." name="answer" {{if ne $curr_ans ""}} value="{{$curr_ans}}" {{end}}>
+                <input id="input-elem" type="text" oninput="submit_answer();" placeholder="Write an answer..." {{if ne $curr_ans ""}} value="{{$curr_ans}}" {{end}}>
             {{end}}
             </form>
         {{else}}
@@ -54,16 +54,17 @@
             {{end}}
             </ul>
         {{end}}
-        <form action="" method="POST">
-            <button name="progress" value="progress">{{if lt $quiz.Question_index 0}}Start Quiz{{else if lt $quiz.Question_index $l}}Next Question{{else}}Finish Quiz{{end}}</button>
-        </form>
+        <div>
+            <button onclick="progress()" name="progress" value="progress">{{if lt $quiz.Question_index 0}}Start Quiz{{else if lt $quiz.Question_index $l}}Next Question{{else}}Finish Quiz{{end}}</button>
+        </div>
         </div class="formbg">
     </div>
 </body>
 </html>
 <script>
 const source = new EventSource('/events/{{$quiz.Code}}');
-var curr_q = "";
+const quiz_length = {{$l}};
+var curr_q = {"index":{{$quiz.Question_index}}};
 
 source.onmessage = (event) => {
     if (event.data.indexOf("q: ") === 0) {
@@ -88,17 +89,15 @@ source.onerror = (err) => {
 
 function radio_button_option(option) {
 return radio_button = `<label for="${option}" class="form-control">${option}</label>
-                       <input onchange="this.form.submit();" type="radio" name="answer" value="${option}" id="${option}"/>`
+                       <input id="input-elem" onchange="submit_answer();" type="radio" name="answer" value="${option}" id="${option}"/>`
 }
 
 function new_question(q) {
     console.log("new_question:", q);
-    curr_q = q;
-    // Start screen
-    {{if lt $quiz.Question_index 0}}
-    location.reload();
+    curr_q = q.index;
+    // Start/End screen
+    if (curr_q == 0 || curr_q == quiz_length) {location.reload(); return}
     // mid quiz
-    {{else if lt $quiz.Question_index $l}}
     const form = document.getElementById("question-form");
     const header = document.getElementById("question-header");
     form.innerHTML = `<p>${q.text}</p>`;
@@ -110,15 +109,35 @@ function new_question(q) {
         });    
     }
     else {
-        form.innerHTML += `<input type="text" onchange="this.form.submit();" placeholder="Write an answer..." name="answer">`
+        form.innerHTML += `<input id="input-elem" type="text" oninput="submit_answer();" placeholder="Write an answer..." name="answer">`
     }
-    {{else}}
-    location.reload()
-    {{end}}
 }
 
 function submit_answer() {
-    //TODO: finish
+    const checked_input = document.getElementById("question-form").querySelector('input[type="radio"]:checked');
+    console.log("checked_input:", checked_input)
+    const input_elem = checked_input != null ? checked_input : document.getElementById("input-elem");
+    console.log("input_elem:", input_elem)
+
+    fetch("/quiz/{{$quiz.Code}}",
+    {
+        method: "POST",
+        body: input_elem.value,
+        headers: {
+            "Content-type": "text/html",
+        },
+    });
+}
+
+function progress() {
+    fetch("/quiz/{{$quiz.Code}}",
+    {
+        method: "POST",
+        headers: {
+            "Content-type": "text/html",
+            "Progress": "true",
+        },
+    });
 }
 
 {{if lt $quiz.Question_index 0}}
